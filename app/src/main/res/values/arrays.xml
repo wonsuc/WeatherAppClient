@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- 아이콘 리스트 -->
+    <array name="actions_iconify">
+        <item>@null</item>
+        <item>fa_check_square_o</item>
+        <item>fa_list_ol</item>
+        <item>@null</item>
+        <item>fa_tasks</item>
+        <item>fa_area_chart</item>
+        <item>fa_bar_chart_o</item>
+        <item>fa_line_chart</item>
+        <item>fa_pie_chart</item>
+        <item>@null</item>
+        <item>fa_credit_card</item>
+        <item>fa_history</item>
+        <item>@null</item>
+        <item>fa_bell</item>
+    </array>
+
+    <string-array name="actions_names">
+<!--         <item>수강</item> -->
+<!--         <item>수강현황</item> -->
+<!--         <item>내 시간표</item> -->
+        <item>출결</item>
+        <item>오늘의 출결현황</item>
+        <item>주간 출결현황</item>
+        <item>성적</item>
+        <item>주간테스트</item>
+        <item>월간테스트</item>
+        <item>학기말고사</item>
+        <item>모의고사</item>
+        <item>내신성적</item>
+        <item>수납</item>
+        <item>납부명세서</item>
+        <item>납부현황</item>
+        <item>학원</item>
+        <item>학원알림</item>
+<!--         <item>상담 및 문의</item> -->
+        <item>계정</item>
+        <item>로그아웃</item>
+    </string-array>
+
+
+</resources>

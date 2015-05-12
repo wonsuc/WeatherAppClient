@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:paddingTop="15dp"
+    android:paddingBottom="15dp"
+    android:paddingLeft="15dp"
+    android:paddingRight="15dp">
+
+    <TextView
+        android:id="@+id/itemLabel"
+        style="@style/Label_ItemLabel"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="3.5"
+        android:paddingLeft="0dp"
+        android:paddingRight="15dp"
+        android:text="라벨" />
+
+    <TextView
+        android:id="@+id/itemValue"
+        style="@style/Label_ItemText"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="6.5"
+        android:layout_gravity="start|center_vertical"
+        android:paddingLeft="10dp"
+        android:paddingRight="15dp"
+        android:maxLines="3"
+        android:text="" />
+
+</LinearLayout>
