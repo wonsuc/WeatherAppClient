@@ -10,25 +10,21 @@ import com.squareup.okhttp.Request;
 import com.squareup.okhttp.Response;
 
 import java.io.IOException;
-import java.util.concurrent.Callable;
 
 public class HttpClient {
 
     // OkHttpClient 객체는 멤버필드에서 final 형태로 한번만 생성해서 newCall 메서드를 통해 재사용한다.
     private final OkHttpClient client = new OkHttpClient();
-    public Request request;
-    public IOException ioexception;
-    public Response response;
 
-    private void resetCallback() {
-        this.request = null;
-        this.ioexception = null;
-        this.response = null;
+    public interface Fail<V, O, E> {
+        public V call(O request, E e) throws Exception;
     }
 
-    public Call get(String url, String params, final Callable<?> fail, final Callable<?> success) throws IOException {
-        resetCallback();
+    public interface Success<V, O> {
+        public V call(O response) throws Exception;
+    }
 
+    public Call get(String url, String params, final Fail<?,Request,IOException> fail, final Success<?,Response> success) throws IOException {
         Request request = new Request.Builder()
                 .url(url + "?" + params)
                 .get()
@@ -44,9 +40,7 @@ public class HttpClient {
                     @Override
                     public void run() {
                         try {
-                            HttpClient.this.request = request;
-                            HttpClient.this.ioexception = ioexception;
-                            fail.call();
+                            fail.call(request,e);
                         } catch (Exception ex) {
                             ex.printStackTrace();
                         }
@@ -60,8 +54,7 @@ public class HttpClient {
                     @Override
                     public void run() {
                         try {
-                            HttpClient.this.response = response;
-                            success.call();
+                            success.call(response);
                         } catch (Exception ex) {
                             ex.printStackTrace();
                         }

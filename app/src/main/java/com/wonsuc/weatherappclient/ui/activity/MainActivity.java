@@ -200,26 +200,25 @@ public class MainActivity extends BaseActivity {
 
         try {
             httpClient.get(url, params,
-                    new Callable<Void>() {
-
-                        @Override
-                        public Void call() throws Exception {
-                            return null;
+                new HttpClient.Fail<Void, Request, IOException>() {
+                    @Override
+                    public Void call(Request request, IOException ioexception) throws Exception {
+                        return null;
+                    }
+                },
+                new HttpClient.Success<Void, Response>() {
+                    @Override
+                    public Void call(Response response) throws Exception {
+                        if(response.isSuccessful()) {
+                            jsonParser(response);
+                        }else{
+                            System.out.println(response);
                         }
-                    },
-                    new Callable<Void>() {
+                        return null;
+                    }
+                }
+            );
 
-                        @Override
-                        public Void call() throws Exception {
-                            Response response = httpClient.response;
-                            if(response.isSuccessful()) {
-                                jsonParser(response);
-                            }else{
-                                System.out.println(response);
-                            }
-                            return null;
-                        }
-                    });
         } catch (IOException e) {
             e.printStackTrace();
         }
