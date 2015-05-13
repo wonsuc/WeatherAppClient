@@ -1,0 +1,38 @@
+buildscript {
+    repositories {
+        jcenter()
+    }
+
+    dependencies {
+        classpath 'com.android.tools.build:gradle:1.0.0'
+    }
+}
+
+//apply plugin: 'com.android.application'
+apply plugin: 'android-library'
+
+repositories {
+    jcenter()
+}
+
+dependencies {
+    //compile "com.google.android.gms:play-services-wearable:6.5.+"
+    //compile "com.google.android.gms:play-services-location:6.5.+"
+    //compile "com.google.maps.android:android-maps-utils:0.3.2"
+    compile 'com.squareup.okhttp:okhttp:2.3.0'
+}
+
+android {
+    compileSdkVersion 22
+    buildToolsVersion "22.0.1"
+
+    defaultConfig {
+        minSdkVersion 15
+        targetSdkVersion 22
+    }
+
+}
+
+
+
+

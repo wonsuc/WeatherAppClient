@@ -3,6 +3,7 @@ package com.wonsuc.weatherappclient.ui.activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
+import android.support.annotation.Nullable;
 import android.support.v7.widget.Toolbar;
 import android.text.format.DateFormat;
 import android.util.Log;
@@ -31,6 +32,7 @@ import com.squareup.okhttp.Request;
 import com.squareup.okhttp.RequestBody;
 import com.squareup.okhttp.Response;
 import com.wonsuc.weatherappclient.R;
+import com.wonsuc.weatherappclient.common.HttpClient;
 
 import org.json.JSONArray;
 
@@ -38,6 +40,7 @@ import java.io.IOException;
 import java.util.Calendar;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.Callable;
 
 import butterknife.ButterKnife;
 import butterknife.InjectView;
@@ -49,7 +52,7 @@ public class MainActivity extends BaseActivity {
 
     // http://newsky2.kma.go.kr/service/SecndSrtpdFrcstInfoService/ForecastGrib?ServiceKey=U%2F6locvWMaaYvTFLXqyMJvAW%2FeRXl8iFCpKULs%2BAFLh3DepTcLoeDlNpg1EY2rb%2FHVRpXNZMgoPTFsJZJpLjaA%3D%3D&region=5%EC%9B%94&base_date=20121212&base_time=0800&nx=130&ny=160&_type=json
 
-    private final OkHttpClient client = new OkHttpClient();
+    private final HttpClient httpClient = new HttpClient();
 
     private final String ServiceKey = "U%2F6locvWMaaYvTFLXqyMJvAW%2FeRXl8iFCpKULs%2BAFLh3DepTcLoeDlNpg1EY2rb%2FHVRpXNZMgoPTFsJZJpLjaA%3D%3D";
     //private final String BaseDate = "20150509";
@@ -173,6 +176,10 @@ public class MainActivity extends BaseActivity {
         };
         weatherCurrentListView.setAdapter(jsonAdapter);
 
+        get();
+    }
+
+    private void get() {
         Calendar cal = Calendar.getInstance();
         cal.set(Calendar.MINUTE, cal.get(Calendar.MINUTE) - 30);
         BaseDate = DateFormat.format("yyyyMMdd", cal.getTime()).toString();
@@ -182,82 +189,54 @@ public class MainActivity extends BaseActivity {
 
         weatherCurrentListTitleTextView.setText(TitleDate + ", 정자동의 날씨 정보");
 
+        String url = "http://newsky2.kma.go.kr/service/SecndSrtpdFrcstInfoService/ForecastGrib";
+        StringBuilder sb = new StringBuilder();
+        String params = sb.append("ServiceKey=").append(ServiceKey)
+                .append("&base_date=").append(BaseDate)
+                .append("&base_time=").append(BaseTime)
+                .append("&nx=").append(NX)
+                .append("&ny=").append(NY)
+                .append("&_type=").append("json").toString();
+
         try {
-            StringBuilder sb = new StringBuilder();
-            String params = sb.append("ServiceKey=").append(ServiceKey)
-                            .append("&base_date=").append(BaseDate)
-                            .append("&base_time=").append(BaseTime)
-                            .append("&nx=").append(NX)
-                            .append("&ny=").append(NY)
-                            .append("&_type=").append("json").toString();
-
-            load("http://newsky2.kma.go.kr/service/SecndSrtpdFrcstInfoService/ForecastGrib", params, new Callback() {
-                Handler mainHandler = new Handler(getMainLooper());
-
-                @Override
-                public void onFailure(final Request request, final IOException e) {
-                    Log.d("Callback() - onFailure()", "Failed.");
-                    mainHandler.post(new Runnable() {
+            httpClient.get(url, params,
+                    new Callable<Void>() {
 
                         @Override
-                        public void run() {
-
+                        public Void call() throws Exception {
+                            return null;
                         }
-                    });
-                }
+                    },
+                    new Callable<Void>() {
 
-                @Override
-                public void onResponse(final Response response) throws IOException {
-                    Log.d("Callback() - onResponse()", "Response returned.");
-                    mainHandler.post(new Runnable() {
                         @Override
-                        public void run() {
+                        public Void call() throws Exception {
+                            Response response = httpClient.response;
                             if(response.isSuccessful()) {
-                                try {
-                                    System.out.println(response.body().charStream());
-
-                                    JsonElement je = new JsonParser().parse(response.body().charStream());
-                                    JsonObject result = je.getAsJsonObject().getAsJsonObject("response");
-                                    JsonObject header = result.getAsJsonObject("header");
-                                    JsonObject body = result.getAsJsonObject("body");
-                                    JsonObject item = body.getAsJsonObject("items");
-                                    JsonArray items = item.getAsJsonArray("item");
-
-                                    JsonObject jItem = new JsonObject();
-                                    for (int i = 0; i < items.size(); i++) {
-                                        System.out.println(items.get(i).getAsJsonObject());
-                                        jsonAdapter.add(items.get(i).getAsJsonObject());
-                                    }
-
-                                } catch(IOException e) {
-                                    e.printStackTrace();
-                                }
+                                jsonParser(response);
                             }else{
                                 System.out.println(response);
                             }
+                            return null;
                         }
-
                     });
-                }
-            });
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private Call load(String url, String params, Callback callback) throws IOException {
-        Log.d("Call()", "Called.");
+    private void jsonParser(Response response) throws IOException {
+        JsonElement je = new JsonParser().parse(response.body().charStream());
+        JsonObject result = je.getAsJsonObject().getAsJsonObject("response");
+        JsonObject header = result.getAsJsonObject("header");
+        JsonObject body = result.getAsJsonObject("body");
+        JsonObject item = body.getAsJsonObject("items");
+        JsonArray items = item.getAsJsonArray("item");
 
-        Log.d("Call()", url + "?" + params);
-
-        Request request = new Request.Builder()
-                .url(url + "?" + params)
-                .get()
-                .build();
-
-        Call call = client.newCall(request);
-        call.enqueue(callback);
-        return call;
+        for (int i = 0; i < items.size(); i++) {
+            System.out.println(items.get(i).getAsJsonObject());
+            jsonAdapter.add(items.get(i).getAsJsonObject());
+        }
     }
 
     @Override
@@ -271,4 +250,10 @@ public class MainActivity extends BaseActivity {
         return true;
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        jsonAdapter.clear();
+        get();
+    }
 }
