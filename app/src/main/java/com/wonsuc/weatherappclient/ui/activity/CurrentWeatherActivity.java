@@ -1,10 +1,10 @@
 package com.wonsuc.weatherappclient.ui.activity;
 
 import android.content.Intent;
+import android.graphics.drawable.ColorDrawable;
+import android.location.Location;
 import android.os.Bundle;
-import android.os.Handler;
-import android.support.annotation.Nullable;
-import android.support.v7.widget.Toolbar;
+import android.os.StrictMode;
 import android.text.format.DateFormat;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -12,55 +12,44 @@ import android.view.Menu;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
-import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.ListView;
-import android.widget.Switch;
 import android.widget.TextView;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.google.gson.annotations.SerializedName;
-import com.squareup.okhttp.Call;
-import com.squareup.okhttp.Callback;
-import com.squareup.okhttp.FormEncodingBuilder;
-import com.squareup.okhttp.MediaType;
-import com.squareup.okhttp.OkHttpClient;
 import com.squareup.okhttp.Request;
-import com.squareup.okhttp.RequestBody;
 import com.squareup.okhttp.Response;
+import com.squareup.picasso.Picasso;
 import com.wonsuc.weatherappclient.R;
 import com.wonsuc.weatherappclient.common.HttpClient;
-
-import org.json.JSONArray;
+import com.wonsuc.weatherappclient.utils.WeatherUtil;
 
 import java.io.IOException;
 import java.util.Calendar;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.Callable;
+import java.util.HashMap;
 
 import butterknife.ButterKnife;
 import butterknife.InjectView;
-import butterknife.OnClick;
-import butterknife.Optional;
-import hugo.weaving.DebugLog;
 
-public class MainActivity extends BaseActivity {
+public class CurrentWeatherActivity extends BaseActivity implements WeatherUtil.OnAddressProviderListener {
 
     // http://newsky2.kma.go.kr/service/SecndSrtpdFrcstInfoService/ForecastGrib?ServiceKey=U%2F6locvWMaaYvTFLXqyMJvAW%2FeRXl8iFCpKULs%2BAFLh3DepTcLoeDlNpg1EY2rb%2FHVRpXNZMgoPTFsJZJpLjaA%3D%3D&region=5%EC%9B%94&base_date=20121212&base_time=0800&nx=130&ny=160&_type=json
 
+    private static final String TAG = CurrentWeatherActivity.class.getSimpleName();
+
     private final HttpClient httpClient = new HttpClient();
+    private WeatherUtil weatherUtil = new WeatherUtil();
 
     private final String ServiceKey = "U%2F6locvWMaaYvTFLXqyMJvAW%2FeRXl8iFCpKULs%2BAFLh3DepTcLoeDlNpg1EY2rb%2FHVRpXNZMgoPTFsJZJpLjaA%3D%3D";
-    //private final String BaseDate = "20150509";
-    //private final String BaseTime = "1800";
     private String BaseDate = "";
     private String BaseTime = "";
-    private final String NX = "62";
-    private final String NY = "122";
+    private String NX = "";
+    private String NY = "";
+
+    private String address;
 
     public static enum CategoryValue {
 
@@ -124,10 +113,18 @@ public class MainActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // Picasso로 간단히 이미지를 다운로드 받고 bg에 draw 한다.
+        Picasso
+        .with(this)
+        .load("http://cdn.eyeem.com/thumb/h/800/6df34d42fa813b926f24cf9d32d49eea779cc014-1405682234")
+        .placeholder(new ColorDrawable(0xffaaaaaa))
+        .into((ImageView) findViewById(R.id.bg));
+
+        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+        StrictMode.setThreadPolicy(policy);
+
         if (savedInstanceState == null) {
-
         } else {
-
         }
 
         jsonAdapter = new ArrayAdapter<JsonObject>(this, 0) {
@@ -176,18 +173,27 @@ public class MainActivity extends BaseActivity {
         };
         weatherCurrentListView.setAdapter(jsonAdapter);
 
-        get();
+        // 이렇게 함으로써 비로서 WeatherUtil 객체에서 메인에서 입력된 메서드들을 호출할 수 있다.
+        weatherUtil.setOnAddressProviderListener(this);
     }
 
-    private void get() {
+
+    private void get(Location location, String address) {
+        // 타이틀 영역의 날짜와 시간, 현재 위치 정보 표시
+        String TitleDate = DateFormat.format("yyyy년 MM월 dd일 H시", Calendar.getInstance().getTime()).toString();
+        weatherCurrentListTitleTextView.setText(TitleDate + ", " + address + "의 날씨 정보");
+
+        // http 클라이언트
         Calendar cal = Calendar.getInstance();
         cal.set(Calendar.MINUTE, cal.get(Calendar.MINUTE) - 30);
         BaseDate = DateFormat.format("yyyyMMdd", cal.getTime()).toString();
         BaseTime = DateFormat.format("HH00", cal.getTime()).toString();
 
-        String TitleDate = DateFormat.format("yyyy년 MM월 dd일 H시", Calendar.getInstance().getTime()).toString();
+        HashMap<String, Double> locationMap = weatherUtil.convXY("toXY", location.getLatitude(), location.getLongitude());
+        NX = String.valueOf(locationMap.get("x").intValue());
+        NY = String.valueOf(locationMap.get("y").intValue());
 
-        weatherCurrentListTitleTextView.setText(TitleDate + ", 정자동의 날씨 정보");
+        Log.v(TAG, "NX: " + NX + ", NY: " + NY);
 
         String url = "http://newsky2.kma.go.kr/service/SecndSrtpdFrcstInfoService/ForecastGrib";
         StringBuilder sb = new StringBuilder();
@@ -202,7 +208,7 @@ public class MainActivity extends BaseActivity {
             httpClient.get(url, params,
                 new HttpClient.Fail<Void, Request, IOException>() {
                     @Override
-                    public Void call(Request request, IOException ioexception) throws Exception {
+                    public Void call(Request request, IOException e) throws Exception {
                         return null;
                     }
                 },
@@ -239,20 +245,28 @@ public class MainActivity extends BaseActivity {
     }
 
     @Override
-    protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        super.onCreateOptionsMenu(menu);
-        return true;
-    }
-
-    @Override
-    protected void onResume() {
+    public void onResume() {
         super.onResume();
         jsonAdapter.clear();
-        get();
+        if(mCurrentLocation != null && address != null) get(mCurrentLocation, address);
     }
+
+    @Override
+    public void onLocationChanged(Location location) {
+        super.onLocationChanged(location);
+
+        // 넘겨받은 좌표값을 기준으로 한국 주소를 추출하고 주소가 추출되면 아래의 onAddressProvided 이벤트 리스너가 작동된다.
+        weatherUtil.getKoreanAddress(location);
+    }
+
+    @Override
+    public void onAddressProvided(HashMap<String, String> map, Location location) {
+        Log.d(TAG, "onAddressProvided fired");
+
+        // 멤버변수에 넣는 이유는 onResume 일 때 재사용하기 위함이다.
+        this.address = map.get("town");
+        get(location, this.address);
+    }
+
+
 }

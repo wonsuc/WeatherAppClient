@@ -13,7 +13,7 @@
         style="@style/Label_ItemLabel"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_weight="4"
+        android:layout_weight="5"
         android:paddingLeft="0dp"
         android:paddingRight="15dp"
         android:text="라벨" />
@@ -23,7 +23,7 @@
         style="@style/Label_ItemText"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_weight="6"
+        android:layout_weight="5"
         android:layout_gravity="start|center_vertical"
         android:paddingLeft="10dp"
         android:paddingRight="15dp"
