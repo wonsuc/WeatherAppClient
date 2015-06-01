@@ -20,8 +20,137 @@ public class WeatherUtil {
     private final HttpClient httpClient = new HttpClient();
     private OnAddressProviderListener onAddressProviderListener;
 
-    // http://maps.googleapis.com/maps/api/geocode/json?latlng=37.359454,127.126094&sensor=true&language=ko
+    // https://apis.daum.net/local/geo/coord2addr?apikey=a302ba88cd67d2fc7ba5d225ad03e6e1&latitude=37.655592&longitude=127.043646&inputCoordSystem=WGS84&output=json
     public void getKoreanAddress(final Location location) {
+
+        final HashMap<String, String> map = new HashMap<String, String>();
+
+        String url = "https://apis.daum.net/local/geo/coord2addr";
+        StringBuilder sb = new StringBuilder();
+        String params = sb.append("apikey=").append("a302ba88cd67d2fc7ba5d225ad03e6e1")
+                .append("&latitude=").append(location.getLatitude())
+                .append("&longitude=").append(location.getLongitude())
+                .append("&inputCoordSystem=").append("WGS84")
+                .append("&output=").append("json").toString();
+
+        try {
+            httpClient.get(url, params,
+                    new HttpClient.Fail<Void, Request, IOException>() {
+                        @Override
+                        public Void call(Request request, IOException e) throws Exception {
+                            return null;
+                        }
+                    },
+                    new HttpClient.Success<Void, Response>() {
+                        @Override
+                        public Void call(Response response) throws Exception {
+                            if(response.isSuccessful()) {
+                                //System.out.println(response.body().string());
+                                JsonElement je = new JsonParser().parse(response.body().charStream());
+
+                                // 국가
+                                map.put("country", je.getAsJsonObject().get("name0").getAsString());
+                                // 도
+                                String province = null;
+                                if(je.getAsJsonObject().has("name1")) province = je.getAsJsonObject().get("name1").getAsString();
+                                map.put("province", province);
+                                // 시/구
+                                String district = null;
+                                if(je.getAsJsonObject().has("name2")) district = je.getAsJsonObject().get("name2").getAsString();
+                                map.put("district", district);
+                                // 동
+                                map.put("town", je.getAsJsonObject().get("name3").getAsString());
+
+                                // typeRegId: 날씨 상태를 위한 regId
+                                // tempRegId: 온도를 위한 regId
+
+                                String typeRegId = "";
+                                switch (province) {
+                                    case "서울특별시":
+                                    case "인천광역시":
+                                    case "경기도":
+                                        typeRegId = "11B00000";
+                                        break;
+                                    case "강원도":
+                                        switch (district) {
+                                            case "춘천시":
+                                            case "화천군":
+                                            case "양구군":
+                                            case "인제군":
+                                            case "철원군":
+                                            case "홍천군":
+                                            case "원주시":
+                                            case "횡성군":
+                                            case "영월군":
+                                            case "평창군":
+                                            case "정선군":
+                                                typeRegId = "11D10000";
+                                                break;
+                                            case "강릉시":
+                                            case "동해시":
+                                            case "삼척시":
+                                            case "고성군":
+                                            case "속초시":
+                                            case "양양군":
+                                            case "태백시":
+                                                typeRegId = "11D20000";
+                                                break;
+                                        }
+                                        break;
+                                    case "충청북도":
+                                        typeRegId = "11C10000";
+                                        break;
+                                    case "대전광역시":
+                                    case "세종특별자치시":
+                                    case "충청남도":
+                                        typeRegId = "11C20000";
+                                        break;
+                                    case "전라북도":
+                                        typeRegId = "11F10000";
+                                        break;
+                                    case "광주광역시":
+                                    case "전라남도":
+                                        typeRegId = "11F20000";
+                                        break;
+                                    case "대구광역시":
+                                    case "경상북도":
+                                        typeRegId = "11H10000";
+                                        break;
+                                    case "부산광역시":
+                                    case "울산광역시":
+                                    case "경상남도":
+                                        typeRegId = "11H20000";
+                                        break;
+                                    case "제주특별자치도":
+                                        typeRegId = "11G0000";
+                                        break;
+                                    default:
+                                        break;
+                                }
+
+                                map.put("typeRegId", typeRegId);
+                                map.put("tempRegId", null);
+
+                                System.out.println(map);
+
+                                // 성공적으로 가져왔을시 이벤트 리스너 작동
+                                if (onAddressProviderListener != null) {
+                                    onAddressProviderListener.onAddressProvided(map, location);
+                                }
+                            } else {
+                                System.out.println(response);
+                            }
+                            return null;
+                        }
+                    }
+            );
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // http://maps.googleapis.com/maps/api/geocode/json?latlng=37.359454,127.126094&sensor=true&language=ko
+    public void getKoreanAddress_x(final Location location) {
 
         final HashMap<String, String> map = new HashMap<String, String>();
 
@@ -44,7 +173,6 @@ public class WeatherUtil {
                         @Override
                         public Void call(Response response) throws Exception {
                             if(response.isSuccessful()) {
-                                //jsonParser(response);
                                 //System.out.println(response.body().string());
                                 JsonElement je = new JsonParser().parse(response.body().charStream());
                                 JsonArray results = je.getAsJsonObject().getAsJsonArray("results");
@@ -56,6 +184,15 @@ public class WeatherUtil {
                                 map.put("city",addresses.get(2).getAsJsonObject().get("long_name").getAsString());
                                 map.put("district",addresses.get(1).getAsJsonObject().get("long_name").getAsString());
                                 map.put("town",addresses.get(0).getAsJsonObject().get("long_name").getAsString());
+
+                                // typeRegId: 날씨 상태를 위한 regId
+                                // tempRegId: 온도를 위한 regId
+
+                                map.put("typeRegId", null);
+                                map.put("tempRegId", null);
+
+
+
                                 System.out.println(map);
 
                                 // 성공적으로 가져왔을시 이벤트 리스너 작동

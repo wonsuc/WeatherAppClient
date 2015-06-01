@@ -24,7 +24,9 @@ import com.squareup.picasso.Picasso;
 import com.wonsuc.weatherappclient.R;
 import com.wonsuc.weatherappclient.common.HttpClient;
 import com.wonsuc.weatherappclient.model.DailyForecast;
+import com.wonsuc.weatherappclient.model.LongTermForecast;
 import com.wonsuc.weatherappclient.ui.adapter.DailyWeatherAdapter;
+import com.wonsuc.weatherappclient.ui.adapter.LongTermWeatherAdapter;
 import com.wonsuc.weatherappclient.utils.WeatherUtil;
 
 import java.io.IOException;
@@ -47,9 +49,9 @@ public class DailyWeatherActivity extends BaseActivity implements WeatherUtil.On
     private WeatherUtil weatherUtil = new WeatherUtil();
 
     private final String ServiceKey = "U%2F6locvWMaaYvTFLXqyMJvAW%2FeRXl8iFCpKULs%2BAFLh3DepTcLoeDlNpg1EY2rb%2FHVRpXNZMgoPTFsJZJpLjaA%3D%3D";
-    private String BaseDate = "", BaseTime = "", NX = "", NY = "";
+    private String BaseDate = "", BaseTime = "", BaseFullTime = "", NX = "", NY = "";
 
-    private String address;
+    private String address = "", typeRegId = "", tempRegId = "";
 
     public static enum CategoryValue {
 
@@ -106,6 +108,7 @@ public class DailyWeatherActivity extends BaseActivity implements WeatherUtil.On
     @InjectView(R.id.weather_current_list)
     ListView weatherCurrentListView;
 
+    LongTermWeatherAdapter longTermWeatherAdapter;
     DailyWeatherAdapter dailyWeatherAdapter;
 
     @Override
@@ -124,21 +127,113 @@ public class DailyWeatherActivity extends BaseActivity implements WeatherUtil.On
         StrictMode.setThreadPolicy(policy);
 
         // 어댑터 설정 부분
-        dailyWeatherAdapter = new DailyWeatherAdapter(this,0);
-        weatherCurrentListView.setAdapter(dailyWeatherAdapter);
+        //dailyWeatherAdapter = new DailyWeatherAdapter(this,0);
+        //weatherCurrentListView.setAdapter(dailyWeatherAdapter);
+
+        longTermWeatherAdapter = new LongTermWeatherAdapter(this,0);
+        weatherCurrentListView.setAdapter(longTermWeatherAdapter);
 
         // 이렇게 함으로써 비로서 WeatherUtil 객체에서 메인에서 입력된 메서드들을 호출할 수 있다.
         weatherUtil.setOnAddressProviderListener(this);
     }
 
+    private void setTitleView(String address) {
+        // 타이틀 영역의 날짜와 시간, 현재 위치 정보 표시
+        String TitleDate = DateFormat.format("yyyy년 MM월 dd일 H시", Calendar.getInstance().getTime()).toString();
+        weatherCurrentListTitleTextView.setText(TitleDate + ", " + address + "의 날씨 정보");
+    }
 
-    private void get(Location location, String address) {
+    // http://newsky2.kma.go.kr/service/MiddleFrcstInfoService/getMiddleLandWeather?ServiceKey=U%2F6locvWMaaYvTFLXqyMJvAW%2FeRXl8iFCpKULs%2BAFLh3DepTcLoeDlNpg1EY2rb%2FHVRpXNZMgoPTFsJZJpLjaA%3D%3D&regId=11B00000&tmFc=201310171800&numOfRows=1&pageNo=1
+    private void getLongTermType(Location location, String typeRegId) {
+        // http 클라이언트
+        Date time = getLongTermProperTime();
+        BaseFullTime = DateFormat.format("yyyyMMddHHmm", time).toString();
+
+        String url = "http://newsky2.kma.go.kr/service/MiddleFrcstInfoService/getMiddleLandWeather";
+        StringBuilder sb = new StringBuilder();
+        String params = sb.append("ServiceKey=").append(ServiceKey)
+                .append("&regId=").append(typeRegId)
+                .append("&tmFc=").append(BaseFullTime)
+                .append("&_type=").append("json").toString();
+
+        System.out.println(url + "?" + params);
+
+        try {
+            httpClient.get(url, params,
+                    new HttpClient.Fail<Void, Request, IOException>() {
+                        @Override
+                        public Void call(Request request, IOException e) throws Exception {
+                            return null;
+                        }
+                    },
+                    new HttpClient.Success<Void, Response>() {
+                        @Override
+                        public Void call(Response response) throws Exception {
+                            if(response.isSuccessful()) {
+                                setToLongTermWeatherAdapter(dailyTypeParser(response), null);
+                            }else{
+                                System.out.println(response);
+                            }
+                            return null;
+                        }
+
+                    }
+            );
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // http://newsky2.kma.go.kr/service/getMiddleFrcstInfoService/MiddleTemperature?ServiceKey=TEST_SERVICEKEY&regId=11D20501&tmFc=201404080600&pageNo=1&numOfRows=10
+    private void getLongTermTemp(Location location, String tempRegId) {
+        // http 클라이언트
+        Date time = getLongTermProperTime();
+        BaseFullTime = DateFormat.format("yyyyMMddHHmm", time).toString();
+
+        String url = "http://newsky2.kma.go.kr/service/getMiddleFrcstInfoService/MiddleTemperature";
+        StringBuilder sb = new StringBuilder();
+        String params = sb.append("ServiceKey=").append(ServiceKey)
+                .append("&regId=").append("11D20501")
+                .append("&tmFc=").append(BaseFullTime)
+                .append("&_type=").append("json").toString();
+
+        System.out.println(url + "?" + params);
+
+        try {
+            httpClient.get(url, params,
+                    new HttpClient.Fail<Void, Request, IOException>() {
+                        @Override
+                        public Void call(Request request, IOException e) throws Exception {
+                            return null;
+                        }
+                    },
+                    new HttpClient.Success<Void, Response>() {
+                        @Override
+                        public Void call(Response response) throws Exception {
+                            if(response.isSuccessful()) {
+                                dailyTempParser(response);
+                            }else{
+                                System.out.println(response);
+                            }
+                            return null;
+                        }
+
+                    }
+            );
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void getShortTerm(Location location) {
         // 타이틀 영역의 날짜와 시간, 현재 위치 정보 표시
         String TitleDate = DateFormat.format("yyyy년 MM월 dd일 H시", Calendar.getInstance().getTime()).toString();
         weatherCurrentListTitleTextView.setText(TitleDate + ", " + address + "의 날씨 정보");
 
         // http 클라이언트
-        Date time = getProperTime();
+        Date time = getShortTermProperTime();
         BaseDate = DateFormat.format("yyyyMMdd", time).toString();
         BaseTime = DateFormat.format("HHmm", time).toString();
 
@@ -157,6 +252,8 @@ public class DailyWeatherActivity extends BaseActivity implements WeatherUtil.On
                 .append("&ny=").append(NY)
                 .append("&numOfRows=").append("300")
                 .append("&_type=").append("json").toString();
+
+        System.out.println(url + "?" + params);
 
         try {
             httpClient.get(url, params,
@@ -187,7 +284,7 @@ public class DailyWeatherActivity extends BaseActivity implements WeatherUtil.On
     /*
         단기 예보의 경우(3시간 간격): 23, 2, 5, 8, 11, 14, 17, 20
      */
-    private Date getProperTime() {
+    private Date getShortTermProperTime() {
         Calendar cal = Calendar.getInstance();
         cal.set(Calendar.MINUTE, cal.get(Calendar.MINUTE) - 20);
         cal.set(Calendar.MINUTE, 0);
@@ -233,6 +330,149 @@ public class DailyWeatherActivity extends BaseActivity implements WeatherUtil.On
             return cal.getTime();
         } else {
             return null;
+        }
+    }
+
+    /*
+        중기 예보의 경우(12시간 간격): 6, 18
+     */
+    private Date getLongTermProperTime() {
+        Calendar cal = Calendar.getInstance();
+        // 3일 이후의 날씨부터 제공하기 때문에 오늘 날씨를 알고싶으면 3일 전(오후 6시)을 기준으로 요청한다.
+        cal.set(Calendar.DAY_OF_MONTH, cal.get(Calendar.DAY_OF_MONTH) - 3);
+        cal.set(Calendar.HOUR, 18);
+        cal.set(Calendar.MINUTE, 0);
+        Date time = cal.getTime();
+
+        return time;
+        /*Calendar testCal = Calendar.getInstance();
+        testCal.set(Calendar.MINUTE, 0);
+
+        HashMap<String, Date> timeMap = new HashMap<>();
+
+        for (int i = 2; i <= 23; i += 3) {
+            testCal.set(Calendar.HOUR, i);
+            timeMap.put(String.valueOf(i), testCal.getTime());
+        }
+
+        // 문제가 존재하는데 새벽 6시 이전에 자료를 요청하게 되면 전날 18시 기준의 데이터가 로드된다.
+        // 중기 예보는 3일 이후부터 예보를 제공하기 때문에 데이터 상의 3일 이후가 실제로는 2일 이후의 날씨가 된다.
+
+        testCal.set(Calendar.HOUR, 6);
+        timeMap.put("6", testCal.getTime());
+        testCal.set(Calendar.HOUR, 18);
+        timeMap.put("18", testCal.getTime());
+
+        if (time.before(timeMap.get("6"))) {
+            cal.set(Calendar.DAY_OF_MONTH, cal.get(Calendar.DAY_OF_MONTH) - 1);
+            cal.set(Calendar.HOUR, 18);
+            return cal.getTime();
+        } else if (time.after(timeMap.get("6")) && time.before(timeMap.get("18")) || time.equals(timeMap.get("6"))) {
+            cal.set(Calendar.HOUR, 6);
+            return cal.getTime();
+        } else if (time.after(timeMap.get("18")) || time.equals(timeMap.get("18"))) {
+            cal.set(Calendar.HOUR, 18);
+            return cal.getTime();
+        } else {
+            return null;
+        }*/
+    }
+
+    /*{
+        "response": {
+        "header": {
+            "resultCode": "0000",
+                    "resultMsg": "OK"
+        },
+        "body": {
+            "items": {
+                "item": {
+                    "regId": "11B00000",
+                    "wf3Am": "구름많음",
+                    "wf3Pm": "구름많음",
+                    "wf4Am": "구름많음",
+                    "wf4Pm": "구름조금",
+                    "wf5Am": "구름조금",
+                    "wf5Pm": "구름많음",
+                    "wf6Am": "구름많음",
+                    "wf6Pm": "구름많음",
+                    "wf7Am": "구름많음",
+                    "wf7Pm": "구름많음",
+                    "wf8": "구름많음",
+                    "wf9": “구름많음”,
+                    "wf10": "구름많음"
+                }
+            },
+            "numOfRows": 10,
+            "pageNo": 1,
+            "totalCount": 1
+        }
+    }
+    }*/
+    private ArrayList<String> dailyTypeParser(Response response) throws IOException {
+        //System.out.println(response.body().string());
+
+        JsonElement je = new JsonParser().parse(response.body().charStream());
+        JsonObject result = je.getAsJsonObject().getAsJsonObject("response");
+        JsonObject header = result.getAsJsonObject("header");
+        JsonObject body = result.getAsJsonObject("body");
+        JsonObject items = body.getAsJsonObject("items");
+        JsonObject item = items.getAsJsonObject("item");
+
+        ArrayList<String> typeAL = new ArrayList<>();
+
+        typeAL.add(item.get("wf3Pm").getAsString());
+        typeAL.add(item.get("wf4Pm").getAsString());
+        typeAL.add(item.get("wf5Pm").getAsString());
+        typeAL.add(item.get("wf6Pm").getAsString());
+        typeAL.add(item.get("wf7Pm").getAsString());
+        typeAL.add(item.get("wf8").getAsString());
+        typeAL.add(item.get("wf9").getAsString());
+        typeAL.add(item.get("wf10").getAsString());
+
+        return typeAL;
+    }
+
+    private ArrayList<HashMap<String, String>> dailyTempParser(Response response) throws IOException {
+        //System.out.println(response.body().string());
+
+        JsonElement je = new JsonParser().parse(response.body().charStream());
+        JsonObject result = je.getAsJsonObject().getAsJsonObject("response");
+        JsonObject header = result.getAsJsonObject("header");
+        JsonObject body = result.getAsJsonObject("body");
+        JsonObject items = body.getAsJsonObject("items");
+        JsonObject item = items.getAsJsonObject("item");
+
+        ArrayList<HashMap<String, String>> tempAL = new ArrayList<>();
+
+        /*typeAL.add(item.get("wf3Pm").getAsString());
+        typeAL.add(item.get("wf4Pm").getAsString());
+        typeAL.add(item.get("wf5Pm").getAsString());
+        typeAL.add(item.get("wf6Pm").getAsString());
+        typeAL.add(item.get("wf7Pm").getAsString());
+        typeAL.add(item.get("wf8").getAsString());
+        typeAL.add(item.get("wf9").getAsString());
+        typeAL.add(item.get("wf10").getAsString());*/
+
+        return tempAL;
+    }
+
+    private void setToLongTermWeatherAdapter(ArrayList<String> dailyType, ArrayList<String> tempType) {
+        for (int i = 0; i < dailyType.size(); i++) {
+            LongTermForecast longTermForecast = new LongTermForecast();
+
+            Calendar cal = Calendar.getInstance();
+            // 3일 이후의 날씨부터 제공하기 때문에 오늘 날씨를 알고싶으면 3일 전(오후 6시)을 기준으로 요청한다.
+            cal.set(Calendar.DAY_OF_MONTH, cal.get(Calendar.DAY_OF_MONTH) + i);
+            cal.set(Calendar.HOUR, 0);
+            cal.set(Calendar.MINUTE, 0);
+            Date time = cal.getTime();
+
+            String date = DateFormat.format("M월 d일", cal.getTime()).toString();
+
+            longTermForecast.date = date;
+            longTermForecast.type = dailyType.get(i);
+            longTermWeatherAdapter.add(longTermForecast);
         }
     }
 
@@ -293,9 +533,6 @@ public class DailyWeatherActivity extends BaseActivity implements WeatherUtil.On
             hourlyForecastMap.put(time, dailyForecast);
             dailyForecastMap.put(date, hourlyForecastMap);
 
-            //jsonAdapter.add(item.get(i).getAsJsonObject());
-            //dailyWeatherAdapter.add(dailyForecastMap);
-            //dailyForecastMap.
             //String key = dailyForecastMap.keySet().toArray()[0].toString();
             //Log.d(TAG, "key: " + key);
             //dailyWeatherAdapter.add(dailyForecastMap.get(key));
@@ -308,17 +545,22 @@ public class DailyWeatherActivity extends BaseActivity implements WeatherUtil.On
             for (Map.Entry<String, DailyForecast> hourlyForecastMapEntry : hourlyForecastMap.entrySet()) {
                 dailyWeatherAdapter.add(hourlyForecastMapEntry.getValue());
             }
-            //List<String> list = entry.getValue();
-            // Do things with the list
         }
-        //Log.d(TAG, "" + dailyForecastMap.get("20150526"));
+
     }
+
+
 
     @Override
     public void onResume() {
         super.onResume();
-        //jsonAdapter.clear();
-        if(mCurrentLocation != null && address != null) get(mCurrentLocation, address);
+        longTermWeatherAdapter.clear();
+        //dailyWeatherAdapter.clear();
+        if(mCurrentLocation != null && address != null && typeRegId != null) {
+            setTitleView(address);
+            //getShortTerm(mCurrentLocation);
+            getLongTermType(mCurrentLocation, this.typeRegId);
+        }
     }
 
     @Override
@@ -335,7 +577,13 @@ public class DailyWeatherActivity extends BaseActivity implements WeatherUtil.On
 
         // 멤버변수에 넣는 이유는 onResume 일 때 재사용하기 위함이다.
         this.address = map.get("town");
-        get(location, this.address);
+        this.typeRegId = map.get("typeRegId");
+        this.tempRegId = map.get("tempRegId");
+
+        setTitleView(this.address);
+        //getShortTerm(location);
+        getLongTermType(location, this.typeRegId);
+        //get(location, this.address);
     }
 
 

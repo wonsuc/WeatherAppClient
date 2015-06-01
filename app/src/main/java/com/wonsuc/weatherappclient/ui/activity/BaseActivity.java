@@ -255,6 +255,7 @@ public class BaseActivity extends ActionBarActivity
         Log.d(TAG, "isConnected ...............: " + mGoogleApiClient.isConnected());
     }
 
+    // 현재 Activity가 Foreground로 복귀할 때마다 Location을 Update 한다.
     @Override
     public void onResume() {
         super.onResume();
